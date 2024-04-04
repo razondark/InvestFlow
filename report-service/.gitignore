@@ -1,4 +1,4 @@
-HELP.md
+helpReport.md
 target/
 !.mvn/wrapper/maven-wrapper.jar
 !**/src/main/**/target/
@@ -31,8 +31,3 @@ build/
 
 ### VS Code ###
 .vscode/
-
-### Vaadin Flow ###
-frontend/frontend/*
-!frontend/frontend/styles
-frontend/src/main/bundles/prod.bundle

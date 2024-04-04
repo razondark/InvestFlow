@@ -1,0 +1,37 @@
+server:
+  port: 9100
+
+spring:
+  application:
+    name: frontend
+  config:
+    import: optional:file:.env[.properties]
+
+auth:
+  loginLink: ${LOGIN_USER_LINK}
+  registerLink: ${REGISTER_USER_LINK}
+
+invest:
+  portfolioLink: ${PORTFOLIO_LINK}
+  allOperationsLink: ${ALL_OPERATIONS_LINK}
+  accountBalanceLink: ${ACCOUNT_BALANCE_LINK}
+
+vaadin:
+  productionMode: true
+
+stock:
+  allStocksLink: ${ALL_STOCKS_LINK}
+  buyStockLink: ${BUY_STOCK_LINK}
+  stockByFigiLink: ${STOCK_BY_FIGI_LINK}
+  saleStockLink: ${SALE_STOCK_LINK}
+
+bond:
+  allBondsLink: ${All_BOND_LINK}
+  buyBondLink: ${BUY_BOND_LINK}
+  bondByFigiLink: ${BOND_BY_FIGI_LINK}
+  saleBondLink: ${SALE_BOND_LINK}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: ${EUREKA_URL}
