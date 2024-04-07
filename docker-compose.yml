@@ -1,0 +1,159 @@
+version: '3'
+volumes:
+  postgres_data:
+
+services:
+  db:
+    image: postgres:16.2
+    restart: always
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=investdb
+    ports:
+      - '5432:5432'
+    networks:
+      - investflow_network
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  crud-microservice:
+    build:
+      context: ./
+      dockerfile: crud-microservice/Dockerfile
+    image: crud-microservice
+    ports:
+      - "9097:9097"
+    networks:
+      - investflow_network
+    environment:
+      - JAVA_OPTS=-Xmx512M
+      - DATABASE_URL=jdbc:postgresql://db:5432/investdb
+      - DATABASE_USER=postgres
+      - DATABASE_PASSWORD=postgres
+      - EUREKA_URL=http://eureka-service:9101/eureka
+    depends_on:
+      - db
+      - eureka-service
+
+  auth-microservice:
+    build:
+      context: ./
+      dockerfile: auth-microservice/Dockerfile
+    image: auth-microservice
+    ports:
+      - "9099:9099"
+    networks:
+      - investflow_network
+    environment:
+      - JAVA_OPTS=-Xmx512M
+      - JWT_SECRET=ZmFzZGZoamFzZGtoZmthc2tsZmphZHNrZmpBR0FTR0FTREdTQURHRFNmYWRzamZrc2Fkdm5qc2RhdmprYXNmamthc2ZBU0dWQVNER0ZBU0dBc2dmYWhzZGprZ2hhc2Rqa2Zhc2RrZmFza2RqaGZnamRzaGFmamhzZGtqYWZhc2pkaw==
+      - USER_SERVICE_LINK=http://crud-microservice:9097/api/v1/crud/users
+      - EUREKA_URL=http://eureka-service:9101/eureka
+    depends_on:
+      - crud-microservice
+      - eureka-service
+
+  invest-service:
+    build:
+      context: ./
+      dockerfile: invest-service/Dockerfile
+    image: invest-service
+    ports:
+      - "9098:9098"
+    networks:
+      - investflow_network
+    environment:
+      - JAVA_OPTS=-Xmx512M
+      - TOKEN=<TOKEN>
+      - USER_SERVICE_LINK=http://crud-microservice:9097/api/v1/crud/users
+      - CREATE_ACCOUNT_LINK=http://crud-microservice:9097/api/v1/crud/users/accounts
+      - ACCOUNT_SERVICE_LINK=http://crud-microservice:9097/api/v1/crud/accounts
+      - EUREKA_URL=http://eureka-service:9101/eureka
+    depends_on:
+      - crud-microservice
+      - auth-microservice
+      - eureka-service
+      
+  frontend:
+    build:
+      context: ./
+      dockerfile: frontend/Dockerfile
+    image: frontend
+    ports:
+      - "9100:9100"
+    links:
+      - api-gateway
+    networks:
+      - investflow_network
+    environment:
+      - JAVA_OPTS=-Xmx512M
+      - REGISTER_USER_LINK=http://api-gateway:9102/api/v1/auth/register
+      - LOGIN_USER_LINK=http://api-gateway:9102/api/v1/auth/login
+      - PORTFOLIO_LINK=http://api-gateway:9102/api/v1/invest/portfolios
+      - EUREKA_URL=http://eureka-service:9101/eureka
+      - ALL_STOCKS_LINK=http://api-gateway:9102/api/v1/invest/stocks/all
+      - BUY_STOCK_LINK=http://api-gateway:9102/api/v1/invest/stocks/buy
+      - BUY_BOND_LINK=http://api-gateway:9102/api/v1/invest/bonds/buy
+      - ALL_OPERATIONS_LINK=http://api-gateway:9102/api/v1/invest/operations
+      - STOCK_BY_FIGI_LINK=http://api-gateway:9102/api/v1/invest/stocks
+      - BOND_BY_FIGI_LINK=http://api-gateway:9102/api/v1/invest/bonds
+      - ACCOUNT_BALANCE_LINK=http://api-gateway:9102/api/v1/invest/accounts
+    depends_on:
+      - invest-service
+      - eureka-service
+      - auth-microservice
+      - api-gateway
+
+  api-gateway:
+    build:
+      context: ./
+      dockerfile: api-gateway/Dockerfile
+    image: api-gateway
+    ports:
+      - "9102:9102"
+    networks:
+      - investflow_network
+    environment:
+      - JAVA_OPTS=-Xmx512M
+      - JWT_SECRET=ZmFzZGZoamFzZGtoZmthc2tsZmphZHNrZmpBR0FTR0FTREdTQURHRFNmYWRzamZrc2Fkdm5qc2RhdmprYXNmamthc2ZBU0dWQVNER0ZBU0dBc2dmYWhzZGprZ2hhc2Rqa2Zhc2RrZmFza2RqaGZnamRzaGFmamhzZGtqYWZhc2pkaw==
+      - EUREKA_URL=http://eureka-service:9101/eureka
+    depends_on:
+      - invest-service
+      - eureka-service
+      - auth-microservice
+
+#  tg-bot:
+#    build:
+#      context: ./
+#      dockerfile: tg-bot/Dockerfile
+#    image: tg-bot
+#    ports:
+#      - "9096:9096"
+#    networks:
+#      - investflow_network
+#    environment:
+#      - JAVA_OPTS=-Xmx512M
+#      - BOT_NAME=<NAME>
+#      - BOT_TOKEN=<TOKEN>
+#      - COMMAND_START_PICTURE=https://avatars.githubusercontent.com/u/160784827?s=200&v=4
+#    depends_on:
+#      - invest-service
+
+  eureka-service:
+    build:
+      context: ./
+      dockerfile: eureka-server/Dockerfile
+    image: eureka-service
+    restart:
+      always
+    ports:
+      - "9101:9101"
+    environment:
+      - EUREKA_URL=http://eureka-service:9101/eureka
+    networks:
+      - investflow_network
+
+networks:
+  investflow_network:
+    driver: bridge
